@@ -1,17 +1,6 @@
 import type { ConnStatus } from "@/connection/connectionMachine";
 import type { JsonObject, ServerMessage } from "@/protocol/types";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Session view-model
-//
-// This is the shape the UI renders. It is derived purely by `reducer.ts` from an
-// *already ordered and de-duplicated* stream of ServerMessages. The reducer never
-// touches the socket, timers, or `Date.now()` — timestamps arrive on the action —
-// which is what makes it a plain, exhaustively testable function.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** A run of streamed text. Its own stable DOM node so it can be frozen in
- *  place when a tool call interrupts the stream (see ARCHITECTURE.md). */
 export interface TextSegment {
   kind: "text";
   id: string;
@@ -19,7 +8,6 @@ export interface TextSegment {
   firstSeq: number;
   lastSeq: number;
   tokenCount: number;
-  /** Frozen: a tool call or STREAM_END closed this run; no more tokens append. */
   done: boolean;
 }
 
@@ -55,7 +43,7 @@ export interface AgentTurn {
 
 export type Turn = UserTurn | AgentTurn;
 
-// ── Trace timeline ───────────────────────────────────────────────────────────
+//Trace timeline
 
 export type TraceKind =
   | "TOKENS"
@@ -72,29 +60,25 @@ export type TraceKind =
 export interface TraceEvent {
   id: string;
   kind: TraceKind;
-  /** seq of the underlying server message; null for client-side events. */
   seq: number | null;
   tsStart: number;
   tsEnd: number;
   label: string;
   detail?: string;
-  /** For bidirectional highlight with the chat panel. */
   segmentId?: string;
   callId?: string;
-  // Token-group aggregation:
   tokenCount?: number;
   tokenText?: string;
   firstSeq?: number;
   lastSeq?: number;
 }
 
-// ── Context inspector ────────────────────────────────────────────────────────
+//Context inspector
 
 export interface ContextSnapshotEntry {
   seq: number;
   ts: number;
   data: JsonObject;
-  /** Approximate serialized size in bytes, for the "oversized" indicator. */
   bytes: number;
 }
 
@@ -102,8 +86,6 @@ export interface ContextTrack {
   contextId: string;
   snapshots: ContextSnapshotEntry[];
 }
-
-// ── Telemetry (the "check the logs to confirm the drop happened" panel) ──────
 
 export interface Telemetry {
   reconnects: number;
@@ -135,7 +117,7 @@ export interface SessionState {
   lastError: { code: string; message: string } | null;
 }
 
-// ── Actions ──────────────────────────────────────────────────────────────────
+//Actions
 
 export type SessionAction =
   | { type: "CONNECTION_STATUS"; status: ConnStatus }
