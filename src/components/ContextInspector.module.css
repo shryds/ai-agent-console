@@ -1,0 +1,131 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.empty {
+  color: var(--text-faint);
+  text-align: center;
+  padding: 24px;
+  font-size: 13px;
+}
+
+.contextTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.ctxTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.ctxTabActive {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.ctxCount {
+  background: var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.controls {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.scrubber {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepBtn {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 5px;
+  width: 26px;
+  height: 24px;
+  font-size: 11px;
+}
+.stepBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.range {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.oversized {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.modeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.modeBtn {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 5px;
+  padding: 3px 12px;
+  font-size: 12px;
+}
+.modeBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.modeActive {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.summary {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+.added {
+  color: var(--green);
+}
+.removed {
+  color: var(--red);
+}
+.changed {
+  color: var(--amber);
+}
+
+.viewer {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 12px;
+}
