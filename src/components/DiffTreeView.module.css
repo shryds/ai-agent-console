@@ -1,0 +1,79 @@
+.tree {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.clickable {
+  cursor: pointer;
+  border-radius: 3px;
+}
+.clickable:hover {
+  background: var(--bg-elev-2);
+}
+
+.toggle {
+  display: inline-block;
+  width: 12px;
+  color: var(--text-faint);
+}
+.key {
+  color: #79c0ff;
+}
+.summary {
+  color: var(--text-faint);
+  margin-left: 6px;
+}
+.arrow {
+  margin: 0 6px;
+  color: var(--text-faint);
+}
+.prev {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.markerAdded,
+.markerRemoved,
+.markerChanged,
+.markerNone {
+  display: inline-block;
+  width: 12px;
+  font-weight: 700;
+}
+.markerAdded {
+  color: var(--green);
+}
+.markerRemoved {
+  color: var(--red);
+}
+.markerChanged {
+  color: var(--amber);
+}
+.markerNone {
+  color: transparent;
+}
+
+.subtree {
+  display: flex;
+  border-radius: 3px;
+}
+.subtreeBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.added {
+  background: color-mix(in srgb, var(--green-dim) 60%, transparent);
+}
+.removed {
+  background: color-mix(in srgb, var(--red-dim) 60%, transparent);
+}
+.unchanged {
+  opacity: 0.55;
+}
