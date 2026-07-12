@@ -1,0 +1,45 @@
+.tree {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.clickable {
+  cursor: pointer;
+  border-radius: 3px;
+}
+.clickable:hover {
+  background: var(--bg-elev-2);
+}
+
+.toggle {
+  display: inline-block;
+  width: 12px;
+  color: var(--text-faint);
+}
+.key {
+  color: #79c0ff;
+}
+.summary {
+  color: var(--text-faint);
+  margin-left: 6px;
+}
+
+.string {
+  color: #a5d6ff;
+}
+.number {
+  color: #f0b354;
+}
+.boolean {
+  color: var(--purple);
+}
+.null {
+  color: var(--text-faint);
+  font-style: italic;
+}
