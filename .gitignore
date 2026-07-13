@@ -9,3 +9,4 @@ next-env.d.ts.timestamp
 npm-debug.log*
 *.md 
 !README.md
+!DECISIONS.md
