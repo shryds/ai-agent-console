@@ -9,6 +9,9 @@ testable which is completely separate from anything React-related. A hand-writte
 reducer and a small finite state machine track connection and session state
 directly.
 
+## [Live demo](https://www.loom.com/share/d606b369e0214fadb7ed57ca5452da91) 
+
+
 ## Tech stack
 
 - Next.js + TypeScript, strict mode, no `any` anywhere
@@ -40,7 +43,7 @@ inspector fill in as the response streams back.
 
 - Streams the agent's response token by token
 - Handles a tool call interrupting a response mid-stream without any flicker or the existing text jumping around
-- Shows a trace timeline of every message that crossed the socket — filterable, searchable, and linked back to the chat
+- Shows a trace timeline of every message that crossed the socket. It is filterable, searchable, and linked back to the chat
 - Diffs each new context snapshot against the last one, with a history scrubber
 - Reconnects on its own after a drop and picks up exactly where it left off
 
@@ -53,7 +56,7 @@ ORDERING    reorder buffer — sequencing + deduplication
 TRANSPORT   the socket itself + a connection state machine
 ```
 
-An inbound message moves straight down that list before anything renders —
+An inbound message moves straight down that list before anything renders and is
 checked against the ordering buffer first, folded into state only once it's
 confirmed to be next in line, then React re-renders whatever actually
 changed. The one thing that skips the line is a heartbeat reply, which gets
@@ -82,7 +85,7 @@ src/
 
 The socket's connection status and a single turn's streaming status are
 tracked as two separate state machines, since they change for different
-reasons and can be in different states at the same time — the socket can be
+reasons and can be in different states at the same time. The socket can be
 sitting `open` while a turn is still waiting on a tool result, and a
 reconnect can happen mid-turn without disturbing whatever was already on
 screen.
@@ -107,7 +110,7 @@ screen.
                  closed
 ```
 
-Backoff doubles each retry — 500ms, 1s, 2s, 4s, 8s, capping at 10s — and
+Backoff doubles, each retry is 500ms, 1s, 2s, 4s, 8s, capping at 10s and
 resets the moment a connection opens cleanly. A reconnect always passes
 through `resuming` (resume request sent, waiting on the replay) before it's
 allowed back to `open`.
@@ -134,7 +137,10 @@ new streaming text ◀──tokens resume──── tool card (done)
 - The context inspector with a snapshot expanded and its diff against the previous one
   <img src = "screenshots/screenshot-3.png" width = "70%"><br>
 
-More on the reasoning behind specific choices — the ordering/dedup structure,
+
+
+
+More on the reasoning behind specific choices. The ordering/dedup structure,
 how the layout-shift prevention actually works, how reconnection recovers
-state, and what would change at a much bigger scale — is in
+state, and what would change at a much bigger scale is in
 [`DECISIONS.md`](./DECISIONS.md).
