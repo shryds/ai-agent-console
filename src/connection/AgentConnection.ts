@@ -4,8 +4,11 @@ import {
   type ConnEvent,
   type ConnStatus,
 } from "./connectionMachine";
-import { parseServerMessage, type ClientMessage, type ServerMessage } from "@/protocol/types";
-
+import {
+  parseServerMessage,
+  type ClientMessage,
+  type ServerMessage,
+} from "@/protocol/types";
 
 export interface AgentConnectionOptions {
   url: string;
@@ -15,7 +18,8 @@ export interface AgentConnectionOptions {
   getResumeSeq: () => number;
   onPong?: (info: { seq: number; challenge: string }) => void;
   onResumeSent?: (lastSeq: number) => void;
-  onDrop?: () => void;
+  onDrop?: (info: { code: number; reason: string }) => void;
+  onServerClose?: (code: number, reason: string) => void;
   onMalformed?: (raw: string) => void;
 }
 
@@ -42,7 +46,11 @@ export class AgentConnection {
   }
 
   connect(): void {
-    if (this.status === "connecting" || this.status === "open" || this.status === "resuming") {
+    if (
+      this.status === "connecting" ||
+      this.status === "open" ||
+      this.status === "resuming"
+    ) {
       return;
     }
     this.intentional = false;
@@ -66,6 +74,7 @@ export class AgentConnection {
 
   sendUserMessage(content: string): void {
     this.hasSession = true;
+    this.highestPingSeqSeen = 0;
     this.rawSend({ type: "USER_MESSAGE", content });
   }
 
@@ -73,11 +82,9 @@ export class AgentConnection {
     this.rawSend({ type: "TOOL_ACK", call_id: callId });
   }
 
-  /** Whether a client message can be sent right now. */
   canSend(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
-
 
   private openSocket(): void {
     const resume = this.hasSession;
@@ -93,12 +100,16 @@ export class AgentConnection {
     ws.onopen = () => {
       if (this.ws !== ws) return;
       this.attempt = 0;
+      this.highestPingSeqSeen = 0;
       if (resume) {
         const lastSeq = this.opts.getResumeSeq();
         this.rawSend({ type: "RESUME", last_seq: lastSeq });
         this.opts.onResumeSent?.(lastSeq);
         this.dispatch({ type: "SOCKET_OPENED", resumed: true });
-        this.settleTimer = setTimeout(() => this.dispatch({ type: "RESUME_SETTLED" }), 300);
+        this.settleTimer = setTimeout(
+          () => this.dispatch({ type: "RESUME_SETTLED" }),
+          300,
+        );
       } else {
         this.dispatch({ type: "SOCKET_OPENED", resumed: false });
       }
@@ -110,11 +121,11 @@ export class AgentConnection {
       this.handleRaw(raw);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (ev: CloseEvent) => {
+      console.log("WebSocket closed", ev.code, ev.reason);
       if (this.ws !== ws) return;
-      this.handleClose();
+      this.handleClose(ev.code, ev.reason);
     };
-
   }
 
   private handleRaw(raw: string): void {
@@ -127,23 +138,36 @@ export class AgentConnection {
     if (msg.type === "PING") {
       if (msg.seq > this.highestPingSeqSeen) {
         this.highestPingSeqSeen = msg.seq;
-        this.rawSend({ type: "PONG", echo: msg.challenge });
-        this.opts.onPong?.({ seq: msg.seq, challenge: msg.challenge });
+        const challenge = typeof msg.challenge === "string" ? msg.challenge : "";
+        this.rawSend({ type: "PONG", echo: challenge });
+        this.opts.onPong?.({ seq: msg.seq, challenge });
       }
     }
 
     this.opts.onMessage(msg);
   }
 
-  private handleClose(): void {
+  private handleClose(code: number, reason: string): void {
     this.clearTimers();
     if (this.intentional) {
       this.dispatch({ type: "SOCKET_CLOSED", intentional: true });
       return;
     }
+  
+    if (code === 1000) {
+      this.dispatch({ type: "SOCKET_CLOSED", intentional: true });
+      this.opts.onServerClose?.(code, reason);
+      return;
+    }
     this.dispatch({ type: "SOCKET_CLOSED", intentional: false });
-    this.opts.onDrop?.();
+    this.opts.onDrop?.({ code, reason });
     this.scheduleReconnect();
+  }
+
+  requestGapRecovery(): boolean {
+    if (!this.canSend()) return false;
+    this.ws?.close(4001, "gap-recovery");
+    return true;
   }
 
   private scheduleReconnect(): void {
