@@ -57,6 +57,10 @@
 .input:focus {
   border-color: var(--accent);
 }
+.input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 .send {
   background: var(--accent);
@@ -66,9 +70,27 @@
   border-radius: 8px;
   padding: 10px 18px;
   height: 40px;
+  min-width: 68px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: opacity 0.12s;
 }
 .send:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: composerSpin 0.7s linear infinite;
+}
+@keyframes composerSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }

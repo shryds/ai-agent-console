@@ -14,7 +14,8 @@ import styles from "./Console.module.css";
 type SidebarTab = "trace" | "context";
 
 export function Console() {
-  const { state, telemetry, sendMessage, setFocus, clear, canSend } = useAgentSession();
+  const { state, telemetry, bufferStats, sendMessage, setFocus, clear, reconnect, canSend, busy } =
+    useAgentSession();
   const [tab, setTab] = useState<SidebarTab>("trace");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -29,7 +30,7 @@ export function Console() {
         <div className={styles.brand}>
           <span className={styles.logo}>◇</span> Agent Console
         </div>
-        <ConnectionIndicator status={state.status} />
+        <ConnectionIndicator status={state.status} onReconnect={reconnect} />
         <div className={styles.telemetry}>
           <TelemetryBar telemetry={telemetry} />
         </div>
@@ -45,7 +46,7 @@ export function Console() {
       <div className={styles.body}>
         <section className={styles.chatCol}>
           <ChatPanel state={state} onFocus={setFocus} />
-          <Composer onSend={sendMessage} canSend={canSend} onClear={clear} />
+          <Composer onSend={sendMessage} canSend={canSend} busy={busy} onClear={clear} />
         </section>
 
         {sidebarOpen && (
@@ -66,7 +67,12 @@ export function Console() {
             </div>
             <div className={styles.panelBody}>
               {tab === "trace" ? (
-                <TraceTimeline trace={state.trace} focus={state.focus} onFocus={setFocus} />
+                <TraceTimeline
+                  trace={state.trace}
+                  focus={state.focus}
+                  onFocus={setFocus}
+                  bufferStats={bufferStats}
+                />
               ) : (
                 <ContextInspector contexts={state.contexts} contextOrder={state.contextOrder} />
               )}

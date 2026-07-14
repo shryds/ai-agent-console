@@ -17,16 +17,21 @@ const SUGGESTIONS: Array<{ label: string; prompt: string; hint: string }> = [
 export function Composer({
   onSend,
   canSend,
+  busy,
   onClear,
 }: {
   onSend: (content: string) => void;
   canSend: boolean;
+  /** A query is already streaming — only one at a time is allowed. */
+  busy: boolean;
   onClear: () => void;
 }) {
   const [value, setValue] = useState("");
 
+  const sendable = canSend && !busy;
+
   const submit = () => {
-    if (!canSend || value.trim().length === 0) return;
+    if (!sendable || value.trim().length === 0) return;
     onSend(value);
     setValue("");
   };
@@ -38,6 +43,12 @@ export function Composer({
     }
   };
 
+  const placeholder = !canSend
+    ? "Waiting for connection…"
+    : busy
+      ? "Agent is responding — wait for it to finish…"
+      : "Ask the agent… (Enter to send, Shift+Enter for newline)";
+
   return (
     <div className={styles.root}>
       <div className={styles.suggestions}>
@@ -45,9 +56,9 @@ export function Composer({
           <button
             key={s.label}
             className={styles.chip}
-            disabled={!canSend}
+            disabled={!sendable}
             title={s.hint}
-            onClick={() => canSend && onSend(s.prompt)}
+            onClick={() => sendable && onSend(s.prompt)}
           >
             {s.label}
           </button>
@@ -63,12 +74,17 @@ export function Composer({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           rows={1}
-          placeholder={
-            canSend ? "Ask the agent… (Enter to send, Shift+Enter for newline)" : "Waiting for connection…"
-          }
+          disabled={busy}
+          placeholder={placeholder}
         />
-        <button className={styles.send} onClick={submit} disabled={!canSend || value.trim().length === 0}>
-          Send
+        <button
+          className={styles.send}
+          onClick={submit}
+          disabled={!sendable || value.trim().length === 0}
+          title={busy ? "A query is already in progress" : "Send"}
+          aria-label={busy ? "Query in progress" : "Send"}
+        >
+          {busy ? <span className={styles.spinner} aria-hidden /> : "Send"}
         </button>
       </div>
     </div>
