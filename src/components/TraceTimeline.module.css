@@ -112,6 +112,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.detailExpanded {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+}
 .expandBtn {
   background: none;
   border: none;
@@ -137,6 +152,42 @@
   color: var(--text-faint);
   font-size: 11px;
   font-family: var(--mono);
+}
+.footerBuffer {
+  color: var(--text-faint);
+}
+
+.bufferStrip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--amber);
+  background: var(--amber-dim);
+  border-bottom: 1px solid var(--border);
+}
+.bufferStrip strong {
+  font-weight: 700;
+}
+.bufferDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  flex: none;
+  animation: bufferPulse 1s ease-in-out infinite;
+}
+@keyframes bufferPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /* Per-kind colours */
@@ -170,6 +221,14 @@
   color: var(--red);
 }
 .resume {
+  background: var(--amber-dim);
+  color: var(--amber);
+}
+.drop {
+  background: var(--red-dim);
+  color: var(--red);
+}
+.buffer {
   background: var(--amber-dim);
   color: var(--amber);
 }

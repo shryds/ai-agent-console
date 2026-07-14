@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { Focus, TraceEvent, TraceKind } from "@/session/types";
+import type { ReorderStats } from "@/protocol/reorderBuffer";
 import { cx } from "@/lib/classNames";
 import styles from "./TraceTimeline.module.css";
 
@@ -10,10 +11,12 @@ const ALL_KINDS: TraceKind[] = [
   "TOOL_CALL",
   "TOOL_RESULT",
   "CONTEXT",
+  "BUFFER",
   "PING",
   "PONG",
   "STREAM_END",
   "ERROR",
+  "DROP",
   "RESUME",
   "MALFORMED",
 ];
@@ -23,22 +26,29 @@ const KIND_META: Record<TraceKind, { short: string; className: string }> = {
   TOOL_CALL: { short: "CALL", className: "call" },
   TOOL_RESULT: { short: "RSLT", className: "result" },
   CONTEXT: { short: "CTX", className: "context" },
+  BUFFER: { short: "BUF", className: "buffer" },
   PING: { short: "PING", className: "ping" },
   PONG: { short: "PONG", className: "pong" },
   STREAM_END: { short: "END", className: "end" },
   ERROR: { short: "ERR", className: "error" },
+  DROP: { short: "DROP", className: "drop" },
   RESUME: { short: "RSME", className: "resume" },
   MALFORMED: { short: "BAD", className: "malformed" },
 };
+
+/** Details longer than this get an expand toggle instead of being ellipsized away. */
+const DETAIL_EXPAND_THRESHOLD = 48;
 
 export function TraceTimeline({
   trace,
   focus,
   onFocus,
+  bufferStats,
 }: {
   trace: TraceEvent[];
   focus: Focus;
   onFocus: (focus: Focus) => void;
+  bufferStats?: ReorderStats;
 }) {
   const [hidden, setHidden] = useState<Set<TraceKind>>(() => new Set());
   const [query, setQuery] = useState("");
@@ -102,6 +112,8 @@ export function TraceTimeline({
     });
   };
 
+  const holding = bufferStats && bufferStats.pending > 0;
+
   return (
     <div className={styles.root}>
       <div className={styles.filters}>
@@ -124,6 +136,15 @@ export function TraceTimeline({
           ))}
         </div>
       </div>
+
+      {holding && bufferStats && (
+        <div className={styles.bufferStrip} role="status">
+          <span className={styles.bufferDot} />
+          Reorder buffer holding{" "}
+          <strong>{bufferStats.pendingSeqs.map((s) => `#${s}`).join(", ")}</strong> — waiting for{" "}
+          <strong>#{bufferStats.nextExpectedSeq}</strong>
+        </div>
+      )}
 
       <div className={styles.scroll} ref={scrollRef} onScroll={onScroll}>
         {filtered.length === 0 ? (
@@ -149,6 +170,11 @@ export function TraceTimeline({
       </div>
       <div className={styles.footer}>
         {filtered.length} / {trace.length} events
+        {bufferStats && (
+          <span className={styles.footerBuffer}>
+            {" · "}buffer: {bufferStats.pending} pending · {bufferStats.duplicatesDropped} dup dropped
+          </span>
+        )}
       </div>
     </div>
   );
@@ -164,6 +190,19 @@ function isFocused(e: TraceEvent, focus: Focus): boolean {
     return true;
   }
   return false;
+}
+
+/** Pretty-print JSON details when expanded; fall back to the raw string. */
+function formatDetail(detail: string): string {
+  const trimmed = detail.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return JSON.stringify(JSON.parse(trimmed), null, 2);
+    } catch {
+      return detail;
+    }
+  }
+  return detail;
 }
 
 const TraceRow = memo(function TraceRow({
@@ -182,6 +221,11 @@ const TraceRow = memo(function TraceRow({
   const meta = KIND_META[event.kind];
   const isTokens = event.kind === "TOKENS";
   const duration = event.tsEnd - event.tsStart;
+
+  // Long details (tool args, tool results, error payloads…) get cut off by the
+  // single-line ellipsis, so they become expandable just like the token group.
+  const expandableDetail =
+    !isTokens && event.detail !== undefined && event.detail.length > DETAIL_EXPAND_THRESHOLD;
 
   return (
     <div
@@ -209,12 +253,29 @@ const TraceRow = memo(function TraceRow({
             >
               {expanded ? "▾" : "▸"} Streamed {event.tokenCount} tokens ({(duration / 1000).toFixed(1)}s)
             </button>
+          ) : expandableDetail ? (
+            <button
+              className={styles.expandBtn}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                onToggleExpand();
+              }}
+              title={expanded ? "Collapse detail" : "Expand detail"}
+            >
+              {expanded ? "▾" : "▸"} {event.label}
+            </button>
           ) : (
             event.label
           )}
         </div>
         {isTokens && expanded && <div className={styles.tokenText}>{event.tokenText}</div>}
-        {!isTokens && event.detail && <div className={styles.detail}>{event.detail}</div>}
+        {!isTokens &&
+          event.detail &&
+          (expandableDetail && expanded ? (
+            <pre className={styles.detailExpanded}>{formatDetail(event.detail)}</pre>
+          ) : (
+            <div className={styles.detail}>{event.detail}</div>
+          ))}
       </div>
     </div>
   );

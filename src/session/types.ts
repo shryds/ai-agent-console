@@ -50,12 +50,22 @@ export type TraceKind =
   | "TOOL_CALL"
   | "TOOL_RESULT"
   | "CONTEXT"
+  | "BUFFER"
   | "PING"
   | "PONG"
   | "STREAM_END"
   | "ERROR"
+  | "DROP"
   | "RESUME"
   | "MALFORMED";
+
+
+export type BufferEventInfo =
+  | { kind: "held"; seq: number; waitingFor: number; pendingSeqs: number[] }
+  | { kind: "duplicate"; seq: number; reason: "already-released" | "pending-in-buffer" }
+  | { kind: "flushed"; flushedSeqs: number[] }
+  | { kind: "stalled"; missingSeq: number; heldSeqs: number[]; waitedMs: number }
+  | { kind: "skipped"; skippedSeqs: number[]; releasedSeqs: number[] };
 
 export interface TraceEvent {
   id: string;
@@ -95,6 +105,8 @@ export interface Telemetry {
   pongsSent: number;
   toolAcksSent: number;
   lastResumeSeq: number | null;
+  pendingInBuffer: number;
+  seqsSkipped: number;
 }
 
 export interface Focus {
@@ -110,7 +122,6 @@ export interface SessionState {
   trace: TraceEvent[];
   contexts: Record<string, ContextTrack>;
   contextOrder: string[];
-  /** callId → where the tool card lives, for TOOL_RESULT routing + linking. */
   toolLocator: Record<string, { turnId: string; segmentId: string }>;
   focus: Focus;
   telemetry: Telemetry;
@@ -127,6 +138,13 @@ export type SessionAction =
   | { type: "RESUME_SENT"; lastSeq: number; ts: number }
   | { type: "TOOL_ACK_SENT" }
   | { type: "MALFORMED"; ts: number }
+  | {
+      type: "DISCONNECTED";
+      ts: number;
+      terminal?: boolean;
+      reason?: string;
+    }
+  | { type: "BUFFER_EVENT"; info: BufferEventInfo; ts: number }
   | { type: "RECONNECTED" }
   | { type: "FOCUS"; focus: Focus }
   | { type: "CLEAR" };
