@@ -1,5 +1,6 @@
 import type {
   AgentTurn,
+  BufferEventInfo,
   Segment,
   SessionAction,
   SessionState,
@@ -35,6 +36,8 @@ export function createInitialState(): SessionState {
       pongsSent: 0,
       toolAcksSent: 0,
       lastResumeSeq: null,
+      pendingInBuffer: 0,
+      seqsSkipped: 0,
     },
     lastError: null,
   };
@@ -121,6 +124,54 @@ export function reducer(state: SessionState, action: SessionAction): SessionStat
           tsEnd: action.ts,
           label: "Malformed frame dropped",
         }),
+      };
+
+    case "DISCONNECTED": {
+      if (action.terminal) {
+        const why =
+          action.reason === "replaced"
+            ? "Another client took the connection slot — most likely this console is open in another tab or window. This tab has yielded; close the other one and hit Reconnect."
+            : `The server closed the connection cleanly${action.reason ? ` (${action.reason})` : ""}. Auto-reconnect is skipped for deliberate closes — use Reconnect to start a new session.`;
+        return {
+          ...state,
+          lastError: {
+            code: action.reason === "replaced" ? "REPLACED" : "SERVER_CLOSED",
+            message: why,
+          },
+          trace: appendTrace(state.trace, {
+            id: freshId(`${epoch}:drop`),
+            kind: "DROP",
+            seq: null,
+            tsStart: action.ts,
+            tsEnd: action.ts,
+            label: `Connection closed by server${action.reason ? ` — ${action.reason}` : ""}`,
+            detail: why,
+          }),
+        };
+      }
+      const recovery = action.reason === "gap-recovery";
+      return {
+        ...state,
+        trace: appendTrace(state.trace, {
+          id: freshId(`${epoch}:drop`),
+          kind: "DROP",
+          seq: null,
+          tsStart: action.ts,
+          tsEnd: action.ts,
+          label: recovery
+            ? "Socket torn down for gap recovery"
+            : "Connection dropped",
+          detail: recovery
+            ? "Deliberate teardown by the gap watchdog. Reconnecting now; RESUME will request a replay of the missing seq."
+            : "Socket closed unexpectedly. Reconnecting with backoff; a RESUME will be sent once the socket reopens.",
+        }),
+      };
+    }
+
+    case "BUFFER_EVENT":
+      return {
+        ...state,
+        trace: appendTrace(state.trace, bufferTraceEvent(action.info, action.ts)),
       };
 
     case "FOCUS":
@@ -396,6 +447,82 @@ function applyStreamEnd(state: SessionState, seq: number, ts: number): SessionSt
 }
 
 //Small helpers
+
+const fmtSeqs = (seqs: number[]): string => seqs.map((s) => `#${s}`).join(", ");
+
+/** Turn a reorder-buffer decision into a human-readable trace event. */
+function bufferTraceEvent(info: BufferEventInfo, ts: number): TraceEvent {
+  switch (info.kind) {
+    case "held":
+      return {
+        id: freshId(`${epoch}:buf:held`),
+        kind: "BUFFER",
+        seq: info.seq,
+        tsStart: ts,
+        tsEnd: ts,
+        label: `Seq #${info.seq} arrived out of order — held`,
+        detail: `Waiting for #${info.waitingFor} before anything releases. Buffer now holds ${fmtSeqs(
+          info.pendingSeqs,
+        )}.`,
+      };
+    case "duplicate":
+      return {
+        id: freshId(`${epoch}:buf:dup`),
+        kind: "BUFFER",
+        seq: info.seq,
+        tsStart: ts,
+        tsEnd: ts,
+        label: `Duplicate seq #${info.seq} dropped`,
+        detail:
+          info.reason === "already-released"
+            ? "This seq was already released to the UI — typically a server retry or a RESUME replay overlapping frames we processed. The first copy wins."
+            : "An identical seq is already pending in the reorder buffer, so this copy was discarded.",
+      };
+    case "stalled":
+      return {
+        id: freshId(`${epoch}:buf:stall`),
+        kind: "BUFFER",
+        seq: info.missingSeq,
+        tsStart: ts,
+        tsEnd: ts,
+        label: `Seq #${info.missingSeq} missing for ${(info.waitedMs / 1000).toFixed(0)}s — forcing RESUME`,
+        detail: `Held ${fmtSeqs(info.heldSeqs)} can't release until #${
+          info.missingSeq
+        } arrives, and it never did (lost to a latency spike + drop, most likely). Tearing the socket down so RESUME(last_seq=${
+          info.missingSeq - 1
+        }) asks the server to replay it from history.`,
+      };
+    case "skipped":
+      return {
+        id: freshId(`${epoch}:buf:skip`),
+        kind: "BUFFER",
+        seq: info.skippedSeqs[0] ?? null,
+        tsStart: ts,
+        tsEnd: ts,
+        label: `Gave up on seq ${fmtSeqs(info.skippedSeqs)} — skipped (data loss)`,
+        detail: `RESUME replay didn't deliver ${fmtSeqs(
+          info.skippedSeqs,
+        )} either (the server's history may not have had it). Abandoned the gap and released held ${fmtSeqs(
+          info.releasedSeqs,
+        )} so the stream, TOOL_ACKs, and the UI can move on.`,
+      };
+    case "flushed": {
+      const first = info.flushedSeqs[0];
+      const last = info.flushedSeqs[info.flushedSeqs.length - 1];
+      return {
+        id: freshId(`${epoch}:buf:flush`),
+        kind: "BUFFER",
+        seq: first ?? null,
+        tsStart: ts,
+        tsEnd: ts,
+        label: `Gap filled — flushed #${first}–#${last} (${info.flushedSeqs.length} msgs)`,
+        detail: `Seq #${first} arrived and completed the sequence; held messages ${fmtSeqs(
+          info.flushedSeqs.slice(1),
+        )} were released in order right behind it.`,
+      };
+    }
+  }
+}
 
 function withActiveTurn(
   state: SessionState,

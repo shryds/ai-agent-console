@@ -13,7 +13,13 @@ const LABELS: Record<ConnStatus, string> = {
   closed: "Disconnected",
 };
 
-export function ConnectionIndicator({ status }: { status: ConnStatus }) {
+export function ConnectionIndicator({
+  status,
+  onReconnect,
+}: {
+  status: ConnStatus;
+  onReconnect?: () => void;
+}) {
   const busy = status === "reconnecting" || status === "connecting" || status === "resuming";
   return (
     <div
@@ -24,6 +30,11 @@ export function ConnectionIndicator({ status }: { status: ConnStatus }) {
     >
       <span className={cx(styles.dot, busy && styles.pulsing)} />
       <span className={styles.label}>{LABELS[status]}</span>
+      {status === "closed" && onReconnect && (
+        <button className={styles.reconnect} onClick={onReconnect}>
+          Reconnect
+        </button>
+      )}
     </div>
   );
 }

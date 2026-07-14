@@ -65,3 +65,18 @@
     opacity: 0.35;
   }
 }
+
+.reconnect {
+  margin-left: 8px;
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.reconnect:hover {
+  opacity: 0.85;
+}
